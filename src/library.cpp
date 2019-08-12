@@ -43,6 +43,8 @@
 #include "universe.h"
 #include "update.h"
 #include "variable.h"
+#include "neighbor.h"
+#include "pair.h"
 
 #include <cstring>
 #include <vector>
@@ -1000,6 +1002,8 @@ int lammps_extract_global_datatype(void *handle, const char *name)
   if (strcmp(name,"nghost") == 0) return LAMMPS_INT;
   if (strcmp(name,"nmax") == 0) return LAMMPS_INT;
   if (strcmp(name,"ntypes") == 0) return LAMMPS_INT;
+  if (strcmp(name,"neighskin") == 0) return LAMMPS_INT;
+  if (strcmp(name,"paircut") == 0) return LAMMPS_INT;
 
   if (strcmp(name,"q_flag") == 0) return LAMMPS_INT;
 
@@ -1355,6 +1359,8 @@ void *lammps_extract_global(void *handle, const char *name)
   if (strcmp(name,"nlocal") == 0) return (void *) &lmp->atom->nlocal;
   if (strcmp(name,"nghost") == 0) return (void *) &lmp->atom->nghost;
   if (strcmp(name,"nmax") == 0) return (void *) &lmp->atom->nmax;
+  if (strcmp(name,"neighskin") == 0) return (void *) &lmp->neighbor->skin;
+  if (strcmp(name,"paircut") == 0) return (void *) &lmp->force->pair->cutforce;
 
   if (strcmp(name,"q_flag") == 0) return (void *) &lmp->atom->q_flag;
 
