@@ -1473,6 +1473,8 @@ int lammps_extract_global_datatype(void * /*handle*/, const char *name)
   if (strcmp(name,"nghost") == 0) return LAMMPS_INT;
   if (strcmp(name,"nmax") == 0) return LAMMPS_INT;
   if (strcmp(name,"ntypes") == 0) return LAMMPS_INT;
+  if (strcmp(name,"neighskin") == 0) return LAMMPS_INT;
+  if (strcmp(name,"paircut") == 0) return LAMMPS_INT;
   if (strcmp(name,"special_lj") == 0) return LAMMPS_DOUBLE;
   if (strcmp(name,"special_coul") == 0) return LAMMPS_DOUBLE;
 
@@ -1993,6 +1995,8 @@ void *lammps_extract_global(void *handle, const char *name)
   if (strcmp(name,"nlocal") == 0) return (void *) &lmp->atom->nlocal;
   if (strcmp(name,"nghost") == 0) return (void *) &lmp->atom->nghost;
   if (strcmp(name,"nmax") == 0) return (void *) &lmp->atom->nmax;
+  if (strcmp(name,"neighskin") == 0) return (void *) &lmp->neighbor->skin;
+  if (strcmp(name,"paircut") == 0) return (void *) &lmp->force->pair->cutforce;
   if (strcmp(name,"special_lj") == 0) return (void *) lmp->force->special_lj;
   if (strcmp(name,"special_coul") == 0) return (void *) lmp->force->special_coul;
 
