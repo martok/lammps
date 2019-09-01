@@ -29,6 +29,7 @@
 #include "neigh_request.h"
 #include "memory.h"
 #include "error.h"
+#include "debug_math.h"
 
 
 
@@ -97,6 +98,8 @@ void PairMEAMC::compute(int eflag, int vflag)
   int *numneigh_full,**firstneigh_full;
 
   ev_init(eflag,vflag);
+
+  DBG_FP_Exceptions ef(DBG_FP_Exceptions::COMMON);
 
   // neighbor list info
 
@@ -206,6 +209,8 @@ void PairMEAMC::settings(int narg, char **/*arg*/)
 void PairMEAMC::coeff(int narg, char **arg)
 {
   int m,n;
+
+  DBG_FP_Exceptions ef(DBG_FP_Exceptions::COMMON);
 
   if (!allocated) allocate();
 
