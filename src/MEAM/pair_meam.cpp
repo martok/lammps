@@ -27,6 +27,7 @@
 #include "neigh_request.h"
 #include "neighbor.h"
 #include "potential_file_reader.h"
+#include "debug_math.h"
 
 #include <algorithm>
 #include <cstring>
@@ -90,6 +91,8 @@ void PairMEAM::compute(int eflag, int vflag)
   int *ilist_half, *numneigh_half, **firstneigh_half;
   int *numneigh_full, **firstneigh_full;
   ev_init(eflag, vflag);
+
+  DBG_FP_Exceptions ef(DBG_FP_Exceptions::COMMON);
 
   // neighbor list info
 
@@ -198,6 +201,8 @@ void PairMEAM::settings(int narg, char ** /*arg*/)
 void PairMEAM::coeff(int narg, char **arg)
 {
   int m, n;
+
+  DBG_FP_Exceptions ef(DBG_FP_Exceptions::COMMON);
 
   if (!allocated) allocate();
 
