@@ -114,10 +114,13 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
         if (eflag_either != 0) {
           double phi_sc = phi * scaleij;
           if (eflag_global != 0)
-            *eng_vdwl = *eng_vdwl + phi_sc * sij;
+            #pragma omp atomic update
+            *eng_vdwl += phi_sc * sij;
           if (eflag_atom != 0) {
-            eatom[i] = eatom[i] + 0.5 * phi_sc * sij;
-            eatom[j] = eatom[j] + 0.5 * phi_sc * sij;
+            #pragma omp atomic update
+            eatom[i] += 0.5 * phi_sc * sij;
+            #pragma omp atomic update
+            eatom[j] += 0.5 * phi_sc * sij;
           }
         }
 
@@ -632,8 +635,10 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
         force = dUdrij * recip + dUdsij * dscrfcn[fnoffset + jn];
         for (m = 0; m < 3; m++) {
           forcem = delij[m] * force + dUdrijm[m];
-          f[i][m] = f[i][m] + forcem;
-          f[j][m] = f[j][m] - forcem;
+          #pragma omp atomic update
+          f[i][m] += forcem;
+          #pragma omp atomic update
+          f[j][m] -= forcem;
         }
 
         //     Tabulate per-atom virial as symmetrized stress tensor
@@ -651,12 +656,15 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
 
           if (vflag_global) {
             for (m = 0; m < 6; m++) {
+              #pragma omp atomic update
               virial[m] += 2.0*v[m];
             }
           }
           if (vflag_atom) {
             for (m = 0; m < 6; m++) {
+              #pragma omp atomic update
               vatom[i][m] += v[m];
+              #pragma omp atomic update
               vatom[j][m] += v[m];
             }
           }
@@ -718,14 +726,23 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
               force1 = dUdsij * dsij1;
               force2 = dUdsij * dsij2;
 
+              #pragma omp atomic update
               f[i][0] += force1 * dxik;
+              #pragma omp atomic update
               f[i][1] += force1 * dyik;
+              #pragma omp atomic update
               f[i][2] += force1 * dzik;
+              #pragma omp atomic update
               f[j][0] += force2 * dxjk;
+              #pragma omp atomic update
               f[j][1] += force2 * dyjk;
+              #pragma omp atomic update
               f[j][2] += force2 * dzjk;
+              #pragma omp atomic update
               f[k][0] -= force1 * dxik + force2 * dxjk;
+              #pragma omp atomic update
               f[k][1] -= force1 * dyik + force2 * dyjk;
+              #pragma omp atomic update
               f[k][2] -= force1 * dzik + force2 * dzjk;
 
               //     Tabulate per-atom virial as symmetrized stress tensor
@@ -746,14 +763,18 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
 
                 if (vflag_global) {
                   for (m = 0; m < 6; m++) {
+                    #pragma omp atomic update
                     virial[m] += 3.0*v[m];
                   }
                 }
 
                 if (vflag_atom) {
                   for (m = 0; m < 6; m++) {
+                    #pragma omp atomic update
                     vatom[i][m] += v[m];
+                    #pragma omp atomic update
                     vatom[j][m] += v[m];
+                    #pragma omp atomic update
                     vatom[k][m] += v[m];
                   }
                 }

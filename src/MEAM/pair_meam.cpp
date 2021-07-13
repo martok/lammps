@@ -131,11 +131,20 @@ void PairMEAM::compute(int eflag, int vflag)
 
   int offset = 0;
   errorflag = 0;
+  auto offsets = new int[inum_half];
+  for (ii = 0; ii < inum_half; ii++) {
+    i = ilist_half[ii];
+    offsets[ii] = offset;
+    offset += numneigh_half[i];
+  }
+
+  #pragma omp parallel for default(none) schedule(static) \
+                           private(i) \
+                           shared(inum_half,ilist_half,ntype,type,map,scale,x,numneigh_half,firstneigh_half,numneigh_full,firstneigh_full,offsets)
   for (ii = 0; ii < inum_half; ii++) {
     i = ilist_half[ii];
     meam_inst->meam_dens_init(i, ntype, type, map, x, numneigh_half[i], firstneigh_half[i],
-                              numneigh_full[i], firstneigh_full[i], offset);
-    offset += numneigh_half[i];
+                              numneigh_full[i], firstneigh_full[i], offsets[ii]);
   }
   comm->reverse_comm(this);
   meam_inst->meam_dens_final(nlocal, eflag_either, eflag_global, eflag_atom, &eng_vdwl, eatom,
@@ -144,21 +153,25 @@ void PairMEAM::compute(int eflag, int vflag)
 
   comm->forward_comm(this);
 
-  offset = 0;
-
   // vptr is first value in vatom if it will be used by meam_force()
   // else vatom may not exist, so pass dummy ptr
 
   double **vptr = nullptr;
   if (vflag_atom) vptr = vatom;
+
+  #pragma omp parallel for default(none) schedule(static) \
+                           private(i) \
+                           shared(inum_half,ilist_half,eflag_either,eflag_global,eflag_atom,vflag_atom,ntype,type,map,scale,x,numneigh_half,firstneigh_half,numneigh_full,firstneigh_full,offsets) \
+                           shared(eng_vdwl,eatom,f,vptr,virial)
   for (ii = 0; ii < inum_half; ii++) {
     i = ilist_half[ii];
     meam_inst->meam_force(i, eflag_global, eflag_atom, vflag_global, vflag_atom, &eng_vdwl, eatom,
                           ntype, type, map, scale, x, numneigh_half[i], firstneigh_half[i],
-                          numneigh_full[i], firstneigh_full[i], offset, f, vptr, virial);
-    offset += numneigh_half[i];
+                          numneigh_full[i], firstneigh_full[i], offset[ii], f, vptr, virial);
   }
   if (vflag_fdotr) virial_fdotr_compute();
+  
+  delete [] offsets;
 }
 
 /* ---------------------------------------------------------------------- */
