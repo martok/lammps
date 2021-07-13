@@ -33,6 +33,16 @@
 #include <cstring>
 #include <memory>
 
+#if defined(_MSC_VER)
+  // MSVC OpenMP is utterly broken.
+  #undef _OPENMP
+#endif
+
+#if defined(_OPENMP)
+  #include "omp_compat.h"
+  #include <omp.h>
+#endif
+
 using namespace LAMMPS_NS;
 
 static constexpr int MAXLINE = 1024;
@@ -131,11 +141,22 @@ void PairMEAM::compute(int eflag, int vflag)
 
   int offset = 0;
   errorflag = 0;
+  auto offsets = new int[inum_half];
+  for (ii = 0; ii < inum_half; ii++) {
+    i = ilist_half[ii];
+    offsets[ii] = offset;
+    offset += numneigh_half[i];
+  }
+
+#if defined(_OPENMP)
+  #pragma omp parallel for LMP_DEFAULT_NONE schedule(static) \
+                           private(i) \
+                           LMP_SHARED(inum_half,ilist_half,ntype,type,map,x,numneigh_half,firstneigh_half,numneigh_full,firstneigh_full,offsets)
+#endif
   for (ii = 0; ii < inum_half; ii++) {
     i = ilist_half[ii];
     meam_inst->meam_dens_init(i, ntype, type, map, x, numneigh_half[i], firstneigh_half[i],
-                              numneigh_full[i], firstneigh_full[i], offset);
-    offset += numneigh_half[i];
+                              numneigh_full[i], firstneigh_full[i], offsets[ii]);
   }
   comm->reverse_comm(this);
   meam_inst->meam_dens_final(nlocal, eflag_either, eflag_global, eflag_atom, &eng_vdwl, eatom,
@@ -144,21 +165,27 @@ void PairMEAM::compute(int eflag, int vflag)
 
   comm->forward_comm(this);
 
-  offset = 0;
-
   // vptr is first value in vatom if it will be used by meam_force()
   // else vatom may not exist, so pass dummy ptr
 
   double **vptr = nullptr;
   if (vflag_atom) vptr = vatom;
+
+#if defined(_OPENMP)
+  #pragma omp parallel for LMP_DEFAULT_NONE schedule(static) \
+                           private(i) \
+                           LMP_SHARED(inum_half,ilist_half,eflag_either,eflag_global,eflag_atom,vflag_atom,ntype,type,map,scale,x,numneigh_half,firstneigh_half,numneigh_full,firstneigh_full,offsets) \
+                           LMP_SHARED(eng_vdwl,eatom,f,vptr,virial)
+#endif
   for (ii = 0; ii < inum_half; ii++) {
     i = ilist_half[ii];
     meam_inst->meam_force(i, eflag_global, eflag_atom, vflag_global, vflag_atom, &eng_vdwl, eatom,
                           ntype, type, map, scale, x, numneigh_half[i], firstneigh_half[i],
-                          numneigh_full[i], firstneigh_full[i], offset, f, vptr, virial);
-    offset += numneigh_half[i];
+                          numneigh_full[i], firstneigh_full[i], offsets[ii], f, vptr, virial);
   }
   if (vflag_fdotr) virial_fdotr_compute();
+  
+  delete [] offsets;
 }
 
 /* ---------------------------------------------------------------------- */

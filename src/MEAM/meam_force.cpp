@@ -18,6 +18,16 @@
 #include <algorithm>
 #include <cmath>
 
+#if defined(_MSC_VER)
+  // MSVC OpenMP is utterly broken.
+  #undef _OPENMP
+#endif
+
+#if defined(_OPENMP)
+  #include "omp_compat.h"
+  #include <omp.h>
+#endif
+
 using namespace LAMMPS_NS;
 
 void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global, int vflag_atom,
@@ -114,10 +124,19 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
         if (eflag_either != 0) {
           double phi_sc = phi * scaleij;
           if (eflag_global != 0)
-            *eng_vdwl = *eng_vdwl + phi_sc * sij;
+#if defined(_OPENMP)
+            #pragma omp atomic
+#endif
+            *eng_vdwl += phi_sc * sij;
           if (eflag_atom != 0) {
-            eatom[i] = eatom[i] + 0.5 * phi_sc * sij;
-            eatom[j] = eatom[j] + 0.5 * phi_sc * sij;
+#if defined(_OPENMP)
+            #pragma omp atomic
+#endif
+            eatom[i] += 0.5 * phi_sc * sij;
+#if defined(_OPENMP)
+            #pragma omp atomic
+#endif
+            eatom[j] += 0.5 * phi_sc * sij;
           }
         }
 
@@ -632,8 +651,14 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
         force = dUdrij * recip + dUdsij * dscrfcn[fnoffset + jn];
         for (m = 0; m < 3; m++) {
           forcem = delij[m] * force + dUdrijm[m];
-          f[i][m] = f[i][m] + forcem;
-          f[j][m] = f[j][m] - forcem;
+#if defined(_OPENMP)
+          #pragma omp atomic
+#endif
+          f[i][m] += forcem;
+#if defined(_OPENMP)
+          #pragma omp atomic
+#endif
+          f[j][m] -= forcem;
         }
 
         //     Tabulate per-atom virial as symmetrized stress tensor
@@ -651,12 +676,21 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
 
           if (vflag_global) {
             for (m = 0; m < 6; m++) {
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               virial[m] += 2.0*v[m];
             }
           }
           if (vflag_atom) {
             for (m = 0; m < 6; m++) {
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               vatom[i][m] += v[m];
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               vatom[j][m] += v[m];
             }
           }
@@ -718,14 +752,41 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
               force1 = dUdsij * dsij1;
               force2 = dUdsij * dsij2;
 
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[i][0] += force1 * dxik;
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[i][1] += force1 * dyik;
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[i][2] += force1 * dzik;
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[j][0] += force2 * dxjk;
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[j][1] += force2 * dyjk;
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[j][2] += force2 * dzjk;
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[k][0] -= force1 * dxik + force2 * dxjk;
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[k][1] -= force1 * dyik + force2 * dyjk;
+#if defined(_OPENMP)
+              #pragma omp atomic
+#endif
               f[k][2] -= force1 * dzik + force2 * dzjk;
 
               //     Tabulate per-atom virial as symmetrized stress tensor
@@ -746,14 +807,26 @@ void MEAM::meam_force(int i, int eflag_global, int eflag_atom, int vflag_global,
 
                 if (vflag_global) {
                   for (m = 0; m < 6; m++) {
+#if defined(_OPENMP)
+                    #pragma omp atomic
+#endif
                     virial[m] += 3.0*v[m];
                   }
                 }
 
                 if (vflag_atom) {
                   for (m = 0; m < 6; m++) {
+#if defined(_OPENMP)
+                    #pragma omp atomic
+#endif
                     vatom[i][m] += v[m];
+#if defined(_OPENMP)
+                    #pragma omp atomic
+#endif
                     vatom[j][m] += v[m];
+#if defined(_OPENMP)
+                    #pragma omp atomic
+#endif
                     vatom[k][m] += v[m];
                   }
                 }
